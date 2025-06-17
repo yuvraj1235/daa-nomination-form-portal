@@ -217,7 +217,7 @@ const NominationForm: React.FC = () => {
           </h2>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">
             Submit your nomination below before{' '}
-            <span className="text-yellow-400 font-semibold">11th September 2023, 11:59 PM IST</span>
+            <span className="text-yellow-400 font-semibold">11th September 2025, 11:59 PM IST</span>
           </p>
         </div>
 
