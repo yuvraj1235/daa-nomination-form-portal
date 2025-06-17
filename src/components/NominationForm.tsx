@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowUp, Upload, Check, Mail } from 'lucide-react';
+import { ArrowUp, Upload, Check, Mail, X } from 'lucide-react';
 
 interface FormData {
   // Nominator Details
@@ -73,6 +72,15 @@ const NominationForm: React.FC = () => {
     supportingDocs: [] as File[]
   });
 
+  const [dragStates, setDragStates] = useState({
+    cv: false,
+    photograph: false,
+    supportingDocs: false
+  });
+
+  const cvInputRef = useRef<HTMLInputElement>(null);
+  const photographInputRef = useRef<HTMLInputElement>(null);
+  const supportingDocsInputRef = useRef<HTMLInputElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
@@ -108,6 +116,50 @@ const NominationForm: React.FC = () => {
 
   const handleFileChange = (field: keyof typeof files, file: File | File[]) => {
     setFiles(prev => ({ ...prev, [field]: file }));
+  };
+
+  const handleDragOver = (e: React.DragEvent, field: keyof typeof dragStates) => {
+    e.preventDefault();
+    setDragStates(prev => ({ ...prev, [field]: true }));
+  };
+
+  const handleDragLeave = (e: React.DragEvent, field: keyof typeof dragStates) => {
+    e.preventDefault();
+    setDragStates(prev => ({ ...prev, [field]: false }));
+  };
+
+  const handleDrop = (e: React.DragEvent, field: keyof typeof files) => {
+    e.preventDefault();
+    setDragStates(prev => ({ ...prev, [field]: false }));
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    
+    if (field === 'supportingDocs') {
+      handleFileChange(field, droppedFiles);
+    } else if (droppedFiles.length > 0) {
+      handleFileChange(field, droppedFiles[0]);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof typeof files) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles) return;
+
+    if (field === 'supportingDocs') {
+      handleFileChange(field, Array.from(selectedFiles));
+    } else {
+      handleFileChange(field, selectedFiles[0]);
+    }
+  };
+
+  const removeFile = (field: keyof typeof files, index?: number) => {
+    if (field === 'supportingDocs' && typeof index === 'number') {
+      const updatedFiles = [...files.supportingDocs];
+      updatedFiles.splice(index, 1);
+      handleFileChange(field, updatedFiles);
+    } else {
+      handleFileChange(field, field === 'supportingDocs' ? [] : null);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -481,48 +533,139 @@ const NominationForm: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
+                {/* CV Upload */}
                 <div>
                   <Label className="form-label">Upload CV</Label>
-                  <div className="border-2 border-dashed border-slate-600 rounded-lg p-6 text-center hover:border-yellow-400 transition-colors">
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
+                      dragStates.cv 
+                        ? 'border-yellow-400 bg-yellow-400/10' 
+                        : 'border-slate-600 hover:border-yellow-400'
+                    }`}
+                    onDragOver={(e) => handleDragOver(e, 'cv')}
+                    onDragLeave={(e) => handleDragLeave(e, 'cv')}
+                    onDrop={(e) => handleDrop(e, 'cv')}
+                    onClick={() => cvInputRef.current?.click()}
+                  >
                     <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-slate-400">Click to upload CV (PDF, DOC)</p>
+                    <p className="text-slate-400 mb-1">
+                      {dragStates.cv ? 'Drop CV file here' : 'Click to upload or drag and drop'}
+                    </p>
+                    <p className="text-xs text-slate-500">PDF, DOC, DOCX (Max 10MB)</p>
                     <Input 
+                      ref={cvInputRef}
                       type="file" 
                       accept=".pdf,.doc,.docx" 
                       className="hidden" 
-                      onChange={(e) => e.target.files?.[0] && handleFileChange('cv', e.target.files[0])}
+                      onChange={(e) => handleFileInputChange(e, 'cv')}
                     />
                   </div>
+                  {files.cv && (
+                    <div className="mt-2 p-2 bg-slate-700/30 rounded-lg flex items-center justify-between">
+                      <span className="text-sm text-slate-300 truncate">{files.cv.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile('cv')}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
+
+                {/* Photograph Upload */}
                 <div>
                   <Label className="form-label">Upload Photograph</Label>
-                  <div className="border-2 border-dashed border-slate-600 rounded-lg p-6 text-center hover:border-yellow-400 transition-colors">
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
+                      dragStates.photograph 
+                        ? 'border-yellow-400 bg-yellow-400/10' 
+                        : 'border-slate-600 hover:border-yellow-400'
+                    }`}
+                    onDragOver={(e) => handleDragOver(e, 'photograph')}
+                    onDragLeave={(e) => handleDragLeave(e, 'photograph')}
+                    onDrop={(e) => handleDrop(e, 'photograph')}
+                    onClick={() => photographInputRef.current?.click()}
+                  >
                     <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-slate-400">Click to upload photo (JPG, PNG)</p>
+                    <p className="text-slate-400 mb-1">
+                      {dragStates.photograph ? 'Drop image here' : 'Click to upload or drag and drop'}
+                    </p>
+                    <p className="text-xs text-slate-500">JPG, PNG, JPEG (Max 5MB)</p>
                     <Input 
+                      ref={photographInputRef}
                       type="file" 
                       accept=".jpg,.jpeg,.png" 
                       className="hidden"
-                      onChange={(e) => e.target.files?.[0] && handleFileChange('photograph', e.target.files[0])}
+                      onChange={(e) => handleFileInputChange(e, 'photograph')}
                     />
                   </div>
+                  {files.photograph && (
+                    <div className="mt-2 p-2 bg-slate-700/30 rounded-lg flex items-center justify-between">
+                      <span className="text-sm text-slate-300 truncate">{files.photograph.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile('photograph')}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
               
+              {/* Supporting Documents Upload */}
               <div>
                 <Label className="form-label">Upload Supporting Documents</Label>
-                <div className="border-2 border-dashed border-slate-600 rounded-lg p-6 text-center hover:border-yellow-400 transition-colors">
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
+                    dragStates.supportingDocs 
+                      ? 'border-yellow-400 bg-yellow-400/10' 
+                      : 'border-slate-600 hover:border-yellow-400'
+                  }`}
+                  onDragOver={(e) => handleDragOver(e, 'supportingDocs')}
+                  onDragLeave={(e) => handleDragLeave(e, 'supportingDocs')}
+                  onDrop={(e) => handleDrop(e, 'supportingDocs')}
+                  onClick={() => supportingDocsInputRef.current?.click()}
+                >
                   <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                  <p className="text-slate-400">Click to upload multiple files (PDF, DOC, JPG, PNG)</p>
-                  <p className="text-sm text-slate-500">You can select multiple files</p>
+                  <p className="text-slate-400 mb-1">
+                    {dragStates.supportingDocs ? 'Drop files here' : 'Click to upload or drag and drop'}
+                  </p>
+                  <p className="text-xs text-slate-500">Multiple files supported: PDF, DOC, JPG, PNG (Max 10MB each)</p>
                   <Input 
+                    ref={supportingDocsInputRef}
                     type="file" 
                     multiple 
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" 
                     className="hidden"
-                    onChange={(e) => e.target.files && handleFileChange('supportingDocs', Array.from(e.target.files))}
+                    onChange={(e) => handleFileInputChange(e, 'supportingDocs')}
                   />
                 </div>
+                {files.supportingDocs.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {files.supportingDocs.map((file, index) => (
+                      <div key={index} className="p-2 bg-slate-700/30 rounded-lg flex items-center justify-between">
+                        <span className="text-sm text-slate-300 truncate">{file.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile('supportingDocs', index)}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
